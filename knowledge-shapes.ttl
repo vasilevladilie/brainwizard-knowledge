@@ -1,0 +1,291 @@
+@prefix knowledge:      <https://w3id.org/brainwizard/knowledge#> .
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix oa:      <http://www.w3.org/ns/oa#> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+
+# BrainWizard validation rules for the knowledge: vocabulary (0.3.6).
+# Validate notes together with knowledge.ttl, so class hierarchy and SKOS schemes are visible.
+# sh:Violation blocks a save; sh:Warning guides the Wizard (work not finished yet).
+
+#################################################################
+#    Helper shapes: "value belongs to this SKOS scheme"
+#################################################################
+
+knowledge:InNoteStatusScheme    a sh:NodeShape ; sh:property [ sh:path skos:inScheme ; sh:hasValue knowledge:NoteStatusScheme ] .
+knowledge:InStudyStatusScheme   a sh:NodeShape ; sh:property [ sh:path skos:inScheme ; sh:hasValue knowledge:StudyStatusScheme ] .
+knowledge:InEndeavorStatusScheme a sh:NodeShape ; sh:property [ sh:path skos:inScheme ; sh:hasValue knowledge:EndeavorStatusScheme ] .
+knowledge:InMethodScheme        a sh:NodeShape ; sh:property [ sh:path skos:inScheme ; sh:hasValue knowledge:MethodScheme ] .
+knowledge:InThemeScheme         a sh:NodeShape ; sh:property [ sh:path skos:inScheme ; sh:hasValue knowledge:ThemeScheme ] .
+knowledge:InQualifierScheme     a sh:NodeShape ; sh:property [ sh:path skos:inScheme ; sh:hasValue knowledge:QualifierScheme ] .
+knowledge:InExcerptKindScheme   a sh:NodeShape ; sh:property [ sh:path skos:inScheme ; sh:hasValue knowledge:ExcerptKindScheme ] .
+knowledge:InRequirementKindScheme a sh:NodeShape ; sh:property [ sh:path skos:inScheme ; sh:hasValue knowledge:RequirementKindScheme ] .
+knowledge:InDiagramTypeScheme   a sh:NodeShape ; sh:property [ sh:path skos:inScheme ; sh:hasValue knowledge:DiagramTypeScheme ] .
+knowledge:InEpistemicOriginScheme a sh:NodeShape ; sh:property [ sh:path skos:inScheme ; sh:hasValue knowledge:EpistemicOriginScheme ] .
+knowledge:InToulminRoleScheme   a sh:NodeShape ; sh:property [ sh:path skos:inScheme ; sh:hasValue knowledge:ToulminRoleScheme ] .
+
+#################################################################
+#    Organization
+#################################################################
+
+knowledge:StudyShape a sh:NodeShape ;
+    sh:targetClass knowledge:Study ;
+    sh:property [ sh:path knowledge:method ; sh:minCount 1 ; sh:maxCount 1 ; sh:node knowledge:InMethodScheme ;
+                  sh:message "A study needs exactly one method."@en ] ;
+    sh:property [ sh:path knowledge:status ; sh:minCount 1 ; sh:maxCount 1 ; sh:node knowledge:InStudyStatusScheme ] ;
+    sh:xone (
+        [ sh:path knowledge:homeTheme ;   sh:minCount 1 ]
+        [ sh:path knowledge:homeEndeavor ; sh:minCount 1 ]
+    ) ;
+    sh:property [ sh:path knowledge:drawsOn ; sh:class knowledge:Study ; sh:node knowledge:ReviewStudyRef ;
+                  sh:message "A study can only draw on review studies that belong to a theme."@en ] ;
+    sh:message "A study has exactly one home: a theme or an endeavor."@en .
+
+knowledge:ReviewStudyRef a sh:NodeShape ;
+    sh:property [ sh:path knowledge:homeTheme ; sh:minCount 1 ] .
+
+knowledge:ThemeStudyShape a sh:NodeShape ;
+    sh:targetSubjectsOf knowledge:homeTheme ;
+    sh:property [ sh:path knowledge:homeTheme ; sh:maxCount 1 ; sh:node knowledge:InThemeScheme ] ;
+    sh:property [ sh:path knowledge:method ; sh:hasValue knowledge:LiteratureReview ;
+                  sh:message "Theme studies must be literature reviews."@en ] ;
+    sh:property [ sh:path knowledge:examines ; sh:minCount 1 ;
+                  sh:message "A review must examine at least one source."@en ] .
+
+knowledge:EndeavorShape a sh:NodeShape ;
+    sh:targetClass knowledge:Endeavor ;
+    sh:property [ sh:path knowledge:status ; sh:minCount 1 ; sh:maxCount 1 ; sh:node knowledge:InEndeavorStatusScheme ] ;
+    sh:property [ sh:path dcterms:subject ; sh:minCount 1 ; sh:node knowledge:InThemeScheme ;
+                  sh:message "An endeavor must be about at least one theme (knowledge domain)."@en ] ;
+    sh:property [ sh:path knowledge:hasResearchQuestion ; sh:minCount 1 ; sh:severity sh:Warning ;
+                  sh:message "The endeavor has no research questions yet."@en ] .
+
+#################################################################
+#    Notes
+#################################################################
+
+knowledge:NoteShape a sh:NodeShape ;
+    sh:targetClass knowledge:Note ;
+    sh:property [ sh:path knowledge:status ; sh:maxCount 1 ; sh:node knowledge:InNoteStatusScheme ] ;
+    sh:property [ sh:path knowledge:statement ; sh:uniqueLang true ;
+                  sh:message "At most one statement per language."@en ] ;
+    sh:property [ sh:path knowledge:epistemicOrigin ; sh:maxCount 1 ; sh:node knowledge:InEpistemicOriginScheme ] ;
+    sh:not [ sh:and (
+        [ sh:property [ sh:path knowledge:body ;    sh:minCount 1 ] ]
+        [ sh:property [ sh:path knowledge:content ; sh:minCount 1 ] ]
+    ) ] ;
+    sh:message "Text is either inline (knowledge:body) or external (knowledge:content), not both."@en .
+
+knowledge:ExcerptShape a sh:NodeShape ;
+    sh:targetClass knowledge:Excerpt ;
+    sh:property [ sh:path knowledge:quote ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path knowledge:anchoredIn ; sh:minCount 1 ; sh:maxCount 1 ; sh:class oa:SpecificResource ] ;
+    sh:property [ sh:path knowledge:excerptKind ; sh:maxCount 1 ; sh:node knowledge:InExcerptKindScheme ] .
+
+knowledge:StudyNoteShape a sh:NodeShape ;
+    sh:targetClass knowledge:StudyNote ;
+    sh:property [ sh:path knowledge:inStudy ; sh:minCount 1 ; sh:maxCount 1 ; sh:class knowledge:Study ] .
+
+knowledge:ClaimShape a sh:NodeShape ;
+    sh:targetClass knowledge:Claim ;
+    sh:property [ sh:path knowledge:statement ; sh:minCount 1 ;
+                  sh:message "A claim needs a one-sentence statement."@en ] .
+
+knowledge:RevisionShape a sh:NodeShape ;
+    sh:targetSubjectsOf knowledge:revises ;
+    sh:property [ sh:path knowledge:revises ; sh:class knowledge:Claim ] ;
+    sh:property [ sh:path knowledge:statement ; sh:minCount 1 ;
+                  sh:message "A revision must state the revised claim."@en ] .
+
+knowledge:SupersededClaimShape a sh:NodeShape ;
+    sh:targetObjectsOf knowledge:revises ;
+    sh:property [ sh:path knowledge:status ; sh:hasValue knowledge:Superseded ; sh:severity sh:Warning ;
+                  sh:message "This claim has been revised: mark it Superseded."@en ] .
+
+knowledge:IdeaShape a sh:NodeShape ;
+    sh:targetClass knowledge:Idea ;
+    sh:property [ sh:path dcterms:subject ; sh:minCount 1 ; sh:node knowledge:InThemeScheme ;
+                  sh:message "An idea belongs to at least one theme."@en ] ;
+    sh:property [ sh:path knowledge:groundedIn ; sh:minCount 1 ; sh:class knowledge:Note ;
+                  sh:message "A distilled idea must be grounded in study notes or excerpts."@en ] .
+
+knowledge:NarrativeNoteShape a sh:NodeShape ;
+    sh:targetClass knowledge:NarrativeNote ;
+    sh:property [ sh:path knowledge:epistemicOrigin ; sh:in ( knowledge:InterpretiveOrigin ) ;
+                  sh:message "A portrayal is always the result of interpretation."@en ] ;
+    sh:property [ sh:path prov:wasGeneratedBy ; sh:maxCount 1 ; sh:class knowledge:Interpretation ] ;
+    sh:property [ sh:path knowledge:inStudy ; sh:minCount 1 ; sh:maxCount 1 ; sh:class knowledge:Study ] ;
+    sh:property [ sh:path knowledge:realizes ; sh:minCount 1 ; sh:class knowledge:Idea ; sh:severity sh:Warning ;
+                  sh:message "This narrative note does not realize any idea yet."@en ] .
+
+knowledge:InterpretationShape a sh:NodeShape ;
+    sh:targetClass knowledge:Interpretation ;
+    sh:property [ sh:path prov:used ; sh:minCount 1 ;
+                  sh:message "An interpretive act must use at least one idea or note."@en ] ;
+    sh:property [ sh:path [ sh:inversePath prov:wasGeneratedBy ] ; sh:minCount 1 ; sh:class knowledge:NarrativeNote ;
+                  sh:message "An interpretive act must express at least one portrayal."@en ] ;
+    sh:property [ sh:path prov:wasAssociatedWith ; sh:minCount 1 ; sh:severity sh:Warning ] ;
+    sh:property [ sh:path prov:endedAtTime ; sh:maxCount 1 ; sh:datatype xsd:dateTime ] .
+
+knowledge:AnchorShape a sh:NodeShape ;
+    sh:targetClass oa:SpecificResource ;
+    sh:property [ sh:path oa:hasSource ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path oa:hasSelector ; sh:minCount 1 ] .
+
+#################################################################
+#    Argumentation
+#################################################################
+
+knowledge:ArgumentShape a sh:NodeShape ;
+    sh:targetClass knowledge:Argument ;
+    sh:property [ sh:path knowledge:hasClaim ; sh:minCount 1 ; sh:maxCount 1 ; sh:class knowledge:Claim ;
+                  sh:message "An argument concludes exactly one claim."@en ] ;
+    sh:property [ sh:path knowledge:hasGrounds ; sh:minCount 1 ; sh:class knowledge:Note ;
+                  sh:message "An argument needs at least one ground."@en ] ;
+    sh:property [ sh:path knowledge:hasWarrant ; sh:class knowledge:Note ] ;
+    sh:property [ sh:path knowledge:hasBacking ; sh:class knowledge:Note ] ;
+    sh:property [ sh:path knowledge:hasRebuttal ; sh:class knowledge:Note ] ;
+    sh:property [ sh:path knowledge:hasQualification ; sh:class knowledge:Note ] ;
+    sh:property [ sh:path ( knowledge:hasClaim knowledge:status ) ; sh:not [ sh:hasValue knowledge:Superseded ] ;
+                  sh:severity sh:Warning ;
+                  sh:message "This argument concludes a superseded claim: point it to the revision."@en ] ;
+    sh:property [ sh:path knowledge:hasQualifier ; sh:maxCount 1 ; sh:node knowledge:InQualifierScheme ] ;
+    sh:property [ sh:path knowledge:addresses ; sh:class knowledge:ResearchQuestion ] .
+
+knowledge:ResearchQuestionShape a sh:NodeShape ;
+    sh:targetClass knowledge:ResearchQuestion ;
+    sh:property [ sh:path [ sh:inversePath knowledge:addresses ] ; sh:minCount 1 ; sh:severity sh:Warning ;
+                  sh:message "No argument addresses this research question yet."@en ] .
+
+#################################################################
+#    Taking part in an argument (knowledge:isToulminArgumentation)
+#################################################################
+# A note starts plain. Flagging it (knowledge:isToulminArgumentation true) says it is meant for an argument,
+# and knowledge:intendedToulminRole says in which role. Everything about *completeness* is a Warning, so a
+# note can be saved flagged before it is linked; only a malformed flag or role is a Violation.
+#
+# SHACL does not infer that knowledge:hasClaim etc. are sub-properties of knowledge:hasComponent, so "is a component of
+# an argument" lists every role link. Validate the whole brain together: a note's argument may be in
+# another file.
+
+knowledge:ToulminFlagTypeShape a sh:NodeShape ;
+    sh:targetClass knowledge:Note ;
+    sh:property [ sh:path knowledge:isToulminArgumentation ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ;
+    sh:property [ sh:path knowledge:intendedToulminRole ; sh:node knowledge:InToulminRoleScheme ] .
+
+# Flagged, so it should be in an argument.
+knowledge:ToulminFlagShape a sh:NodeShape ;
+    sh:targetSubjectsOf knowledge:isToulminArgumentation ;
+    sh:severity sh:Warning ;
+    sh:message "This note is flagged for Toulmin argumentation but no argument uses it yet."@en ;
+    sh:or (
+        [ sh:property [ sh:path knowledge:isToulminArgumentation ; sh:hasValue false ] ]
+        [ sh:property [ sh:path [ sh:alternativePath (
+                [ sh:inversePath knowledge:hasClaim ]
+                [ sh:inversePath knowledge:hasGrounds ]
+                [ sh:inversePath knowledge:hasWarrant ]
+                [ sh:inversePath knowledge:hasBacking ]
+                [ sh:inversePath knowledge:hasRebuttal ]
+                [ sh:inversePath knowledge:hasQualification ]
+                [ sh:inversePath knowledge:hasComponent ] ) ] ;
+                        sh:minCount 1 ] ]
+    ) .
+
+# In an argument, so it should be flagged.
+knowledge:ToulminParticipantShape a sh:NodeShape ;
+    sh:targetObjectsOf knowledge:hasClaim , knowledge:hasGrounds , knowledge:hasWarrant , knowledge:hasBacking ,
+                       knowledge:hasRebuttal , knowledge:hasQualification , knowledge:hasComponent ;
+    sh:property [ sh:path knowledge:isToulminArgumentation ; sh:hasValue true ; sh:severity sh:Warning ;
+                  sh:message "This note is part of an argument but is not flagged knowledge:isToulminArgumentation."@en ] .
+
+# Meant for a role, so it should be flagged.
+knowledge:ToulminRoleNeedsFlagShape a sh:NodeShape ;
+    sh:targetSubjectsOf knowledge:intendedToulminRole ;
+    sh:property [ sh:path knowledge:isToulminArgumentation ; sh:hasValue true ; sh:severity sh:Warning ;
+                  sh:message "This note has an intended Toulmin role but is not flagged knowledge:isToulminArgumentation."@en ] .
+
+# Meant for a role, so some argument should use it in that role. A note may intend several roles;
+# each is checked on its own.
+
+knowledge:IntendedConclusionShape a sh:NodeShape ;
+    sh:targetSubjectsOf knowledge:intendedToulminRole ;
+    sh:severity sh:Warning ;
+    sh:message "This note is meant to be a conclusion but no argument concludes it yet."@en ;
+    sh:or (
+        [ sh:not [ sh:property [ sh:path knowledge:intendedToulminRole ; sh:hasValue knowledge:ConclusionRole ] ] ]
+        [ sh:property [ sh:path [ sh:inversePath knowledge:hasClaim ] ; sh:minCount 1 ] ]
+    ) .
+
+knowledge:IntendedGroundsShape a sh:NodeShape ;
+    sh:targetSubjectsOf knowledge:intendedToulminRole ;
+    sh:severity sh:Warning ;
+    sh:message "This note is meant to be grounds but no argument uses it as grounds yet."@en ;
+    sh:or (
+        [ sh:not [ sh:property [ sh:path knowledge:intendedToulminRole ; sh:hasValue knowledge:GroundsRole ] ] ]
+        [ sh:property [ sh:path [ sh:inversePath knowledge:hasGrounds ] ; sh:minCount 1 ] ]
+    ) .
+
+knowledge:IntendedWarrantShape a sh:NodeShape ;
+    sh:targetSubjectsOf knowledge:intendedToulminRole ;
+    sh:severity sh:Warning ;
+    sh:message "This note is meant to be a warrant but no argument uses it as a warrant yet."@en ;
+    sh:or (
+        [ sh:not [ sh:property [ sh:path knowledge:intendedToulminRole ; sh:hasValue knowledge:WarrantRole ] ] ]
+        [ sh:property [ sh:path [ sh:inversePath knowledge:hasWarrant ] ; sh:minCount 1 ] ]
+    ) .
+
+knowledge:IntendedBackingShape a sh:NodeShape ;
+    sh:targetSubjectsOf knowledge:intendedToulminRole ;
+    sh:severity sh:Warning ;
+    sh:message "This note is meant to be backing but no argument uses it as backing yet."@en ;
+    sh:or (
+        [ sh:not [ sh:property [ sh:path knowledge:intendedToulminRole ; sh:hasValue knowledge:BackingRole ] ] ]
+        [ sh:property [ sh:path [ sh:inversePath knowledge:hasBacking ] ; sh:minCount 1 ] ]
+    ) .
+
+knowledge:IntendedRebuttalShape a sh:NodeShape ;
+    sh:targetSubjectsOf knowledge:intendedToulminRole ;
+    sh:severity sh:Warning ;
+    sh:message "This note is meant to be a rebuttal but no argument uses it as a rebuttal yet."@en ;
+    sh:or (
+        [ sh:not [ sh:property [ sh:path knowledge:intendedToulminRole ; sh:hasValue knowledge:RebuttalRole ] ] ]
+        [ sh:property [ sh:path [ sh:inversePath knowledge:hasRebuttal ] ; sh:minCount 1 ] ]
+    ) .
+
+knowledge:IntendedQualificationShape a sh:NodeShape ;
+    sh:targetSubjectsOf knowledge:intendedToulminRole ;
+    sh:severity sh:Warning ;
+    sh:message "This note is meant to be a qualification but no argument uses it as one yet."@en ;
+    sh:or (
+        [ sh:not [ sh:property [ sh:path knowledge:intendedToulminRole ; sh:hasValue knowledge:QualificationRole ] ] ]
+        [ sh:property [ sh:path [ sh:inversePath knowledge:hasQualification ] ; sh:minCount 1 ] ]
+    ) .
+
+#################################################################
+#    Reification and formal traceability
+#################################################################
+
+knowledge:RequirementShape a sh:NodeShape ;
+    sh:targetClass knowledge:Requirement ;
+    sh:property [ sh:path knowledge:statement ; sh:minCount 1 ; sh:uniqueLang true ;
+                  sh:message "A requirement needs a 'shall' statement."@en ] ;
+    sh:property [ sh:path knowledge:requirementKind ; sh:maxCount 1 ; sh:node knowledge:InRequirementKindScheme ] ;
+    sh:property [ sh:path knowledge:reifies ; sh:minCount 1 ; sh:class knowledge:Note ;
+                  sh:message "Every requirement must reify at least one note: no requirement without a reason."@en ] ;
+    sh:property [ sh:path [ sh:inversePath knowledge:satisfies ] ; sh:minCount 1 ; sh:severity sh:Warning ;
+                  sh:message "No design artifact satisfies this requirement yet."@en ] .
+
+knowledge:DesignArtifactShape a sh:NodeShape ;
+    sh:targetClass knowledge:DesignArtifact ;
+    sh:property [ sh:path knowledge:satisfies ; sh:minCount 1 ; sh:class knowledge:Requirement ;
+                  sh:message "Every design artifact must satisfy at least one requirement."@en ] ;
+    sh:property [ sh:path knowledge:content ; sh:minCount 1 ; sh:maxCount 1 ;
+                  sh:message "A design artifact needs its model file (PlantUML, PNML, ...)."@en ] .
+
+knowledge:UMLDiagramShape a sh:NodeShape ;
+    sh:targetClass knowledge:UMLDiagram ;
+    sh:property [ sh:path knowledge:diagramType ; sh:minCount 1 ; sh:maxCount 1 ; sh:node knowledge:InDiagramTypeScheme ] .

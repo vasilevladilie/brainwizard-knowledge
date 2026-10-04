@@ -1,0 +1,31 @@
+# Derives study-level links from note-level links (knowledge: vocabulary 0.3.6).
+# Run after each save; replace the result into the inferred named graph, e.g.
+#   urn:graph:inferred  (never into the authored note files).
+PREFIX knowledge: <https://w3id.org/brainwizard/knowledge#>
+PREFIX oa: <http://www.w3.org/ns/oa#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+
+CONSTRUCT {
+  ?case   knowledge:drawsOn     ?review .
+  ?review knowledge:isDrawnOnBy ?case .
+}
+WHERE {
+  ?case knowledge:method knowledge:CaseStudy .
+  ?note knowledge:inStudy ?case .                         # a portrayal, narrative note or argument in the case study
+
+  # follow the note's references, directly or through intermediate notes and ideas
+  ?note (knowledge:realizes|knowledge:hasGrounds|knowledge:hasWarrant|knowledge:hasBacking|knowledge:hasQualification|knowledge:groundedIn|knowledge:hasPremise
+         |(prov:wasGeneratedBy/prov:used))+ ?target .   # incl. what the interpretive act used
+
+  {
+    ?target knowledge:inStudy ?review .                   # a distilled study note of the review study
+  }
+  UNION
+  {
+    ?target knowledge:anchoredIn/oa:hasSource ?source .   # an excerpt from a source the review study examines
+    ?review knowledge:examines ?source .
+  }
+
+  ?review knowledge:homeTheme ?theme .                    # only review studies of a theme
+  FILTER (?case != ?review)
+}

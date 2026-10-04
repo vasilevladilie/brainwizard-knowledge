@@ -1,0 +1,706 @@
+@prefix knowledge:      <https://w3id.org/brainwizard/knowledge#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix oa:      <http://www.w3.org/ns/oa#> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+
+#################################################################
+#    Ontology header
+#################################################################
+
+<https://w3id.org/brainwizard/knowledge> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/brainwizard/knowledge/0.3.6> ;
+    owl:priorVersion <https://w3id.org/brainwizard/kn/0.3.5> ;
+    owl:versionInfo "0.3.6" ;
+    rdfs:label "Vocabular BrainWizard pentru notițe de cercetare"@ro ,
+               "BrainWizard research notes vocabulary"@en ;
+    rdfs:comment """Teme, studii, demersuri, notițe, argumentare Toulmin, reificare în artefacte
+de inginerie și trasabilitate formală de la literatură la proiectare."""@ro ,
+                 """Themes, studies, endeavors, notes, Toulmin argumentation, reification into
+engineering artifacts, and formal traceability from literature to design."""@en .
+
+#################################################################
+#    0. Declarations of reused terms (keeps the file OWL 2 DL)
+#################################################################
+
+skos:Concept         a owl:Class .
+skos:ConceptScheme   a owl:Class .
+skos:inScheme        a owl:ObjectProperty .
+skos:topConceptOf    a owl:ObjectProperty .
+skos:broader         a owl:ObjectProperty .
+skos:notation        a owl:DatatypeProperty .
+skos:prefLabel       a owl:AnnotationProperty .
+skos:definition      a owl:AnnotationProperty .
+
+dcterms:abstract     a owl:DatatypeProperty .
+dcterms:subject      a owl:ObjectProperty .
+dcterms:created      a owl:DatatypeProperty .
+dcterms:modified     a owl:DatatypeProperty .
+dcterms:format       a owl:DatatypeProperty .
+
+oa:SpecificResource  a owl:Class .
+oa:TextQuoteSelector a owl:Class .
+oa:hasSource         a owl:ObjectProperty .
+oa:hasSelector       a owl:ObjectProperty .
+oa:exact             a owl:DatatypeProperty .
+
+prov:wasDerivedFrom  a owl:ObjectProperty .
+prov:wasRevisionOf   a owl:ObjectProperty .
+prov:Activity        a owl:Class .
+prov:wasGeneratedBy  a owl:ObjectProperty .
+prov:used            a owl:ObjectProperty .
+prov:wasAssociatedWith a owl:ObjectProperty .
+prov:endedAtTime     a owl:DatatypeProperty .
+
+#################################################################
+#    1. Module: organization (themes, studies, endeavors)
+#################################################################
+
+knowledge:ThemeScheme a skos:ConceptScheme ;
+    skos:prefLabel "Teme"@ro , "Themes"@en ;
+    skos:definition "Temele sunt concepte SKOS; ierarhia lor se exprimă cu skos:broader."@ro ,
+                    "Themes are SKOS concepts; their hierarchy is expressed with skos:broader."@en .
+
+knowledge:Study a owl:Class ;
+    rdfs:label "Studiu"@ro , "Study"@en ;
+    rdfs:comment "O unitate de lucru proprie, cu o metodă, având o singură casă: o temă sau un demers."@ro ,
+                 "A unit of your own work, with a method, having exactly one home: a theme or an endeavor."@en .
+
+knowledge:Endeavor a owl:Class ;
+    rdfs:label "Demers"@ro , "Endeavor"@en ;
+    rdfs:comment """Lucru orientat spre un scop, care aplică cunoașterea din teme prin studii de caz.
+Poate fi finit (de ex. teza) sau continuu. Nu este o temă: temele sunt domenii de cunoaștere
+(concepte SKOS); un demers este o entitate care are întrebări, studii și o stare."""@ro ,
+                 """Goal-driven work that applies knowledge from themes through case studies.
+May be finite (e.g. the dissertation) or ongoing. Not a theme: themes are knowledge domains
+(SKOS concepts); an endeavor is an entity with questions, studies and a status."""@en .
+
+knowledge:DissertationSection a owl:Class ;
+    rdfs:label "Secțiune a tezei"@ro , "Dissertation section"@en .
+
+knowledge:homeTheme a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:label "temă de origine"@ro , "home theme"@en ;
+    rdfs:comment "Studiu de recenzie care aparține unei teme."@ro ,
+                 "A review study that belongs to a theme."@en ;
+    rdfs:domain knowledge:Study ;
+    rdfs:range skos:Concept .
+
+knowledge:homeEndeavor a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:label "demers de origine"@ro , "home endeavor"@en ;
+    rdfs:domain knowledge:Study ;
+    rdfs:range knowledge:Endeavor .
+
+knowledge:examines a owl:ObjectProperty ;
+    rdfs:label "examinează"@ro , "examines"@en ;
+    rdfs:comment "Sursa (carte, articol) studiată; de regulă un bibo:Document."@ro ,
+                 "The source (book, paper) under study; typically a bibo:Document."@en ;
+    rdfs:domain knowledge:Study .
+
+knowledge:method a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:label "metodă"@ro , "method"@en ;
+    rdfs:domain knowledge:Study ;
+    rdfs:range skos:Concept .
+
+knowledge:drawsOn a owl:ObjectProperty ;
+    rdfs:label "se bazează pe"@ro , "draws on"@en ;
+    rdfs:comment """Derivată, nu se afirmă manual: un studiu de caz se bazează pe un studiu de recenzie
+când o notă din studiul de caz se trage (direct sau tranzitiv) dintr-o notă sau un extras al acelui studiu.
+Calculată de regula knowledge-derive-drawsOn.rq în graful inferat."""@ro ,
+                 """Derived, never asserted by hand: a case study draws on a review study when a note in the
+case study traces (directly or transitively) to a note or excerpt of that review study.
+Computed by the rule knowledge-derive-drawsOn.rq into the inferred graph."""@en ;
+    rdfs:domain knowledge:Study ;
+    rdfs:range knowledge:Study .
+
+knowledge:isDrawnOnBy a owl:ObjectProperty ;
+    rdfs:label "este folosit de"@ro , "is drawn on by"@en ;
+    rdfs:comment "Vederea din partea studiului de recenzie: studiile de caz care îl folosesc."@ro ,
+                 "The review study's view: the case studies that use it."@en ;
+    owl:inverseOf knowledge:drawsOn .
+
+knowledge:usesStudy a owl:ObjectProperty ;
+    rdfs:label "folosește studiul"@ro , "uses study"@en ;
+    rdfs:comment "Derivată: un demers folosește fiecare studiu de recenzie pe care se bazează studiile sale de caz."@ro ,
+                 "Derived: an endeavor uses every review study its case studies draw on."@en ;
+    owl:propertyChainAxiom ( [ owl:inverseOf knowledge:homeEndeavor ] knowledge:drawsOn ) .
+
+knowledge:hasResearchQuestion a owl:ObjectProperty ;
+    rdfs:label "are întrebarea de cercetare"@ro , "has research question"@en ;
+    rdfs:domain knowledge:Endeavor ;
+    rdfs:range knowledge:ResearchQuestion .
+
+#################################################################
+#    2. Module: notes
+#################################################################
+
+knowledge:Note a owl:Class ;
+    rdfs:label "Notă"@ro , "Note"@en ;
+    rdfs:comment "Orice unitate de cunoaștere din bază."@ro ,
+                 "Any unit of knowledge in the knowledge base."@en .
+
+knowledge:Excerpt a owl:Class ;
+    rdfs:subClassOf knowledge:Note ;
+    rdfs:label "Extras"@ro , "Excerpt"@en ;
+    rdfs:comment "Pasaj evidențiat dintr-o sursă, importat din Zotero (Capture)."@ro ,
+                 "A highlighted passage from a source, imported from Zotero (Capture)."@en .
+
+knowledge:StudyNote a owl:Class ;
+    rdfs:subClassOf knowledge:Note ;
+    rdfs:label "Notă de studiu"@ro , "Study note"@en ;
+    rdfs:comment "Lectura proprie a unei surse, legată de contextul ei (Distill în curs)."@ro ,
+                 "Your reading of a source, bound to its context (Distill in progress)."@en .
+
+knowledge:Claim a owl:Class ;
+    rdfs:subClassOf knowledge:Note ;
+    rdfs:label "Afirmație"@ro , "Claim"@en ;
+    rdfs:comment "O notă care susține o propoziție ce poate fi acceptată sau contestată."@ro ,
+                 "A note asserting a proposition that can be agreed or disagreed with."@en .
+
+knowledge:Idea a owl:Class ;
+    rdfs:subClassOf knowledge:Claim ;
+    rdfs:label "Idee"@ro , "Idea"@en ;
+    rdfs:comment "Afirmație independentă de sursă, aparținând uneia sau mai multor teme (Distill încheiat)."@ro ,
+                 "A source-independent claim belonging to one or more themes (Distill finished)."@en .
+
+knowledge:Evidence a owl:Class ;
+    rdfs:subClassOf knowledge:Note ;
+    rdfs:label "Dovadă"@ro , "Evidence"@en .
+
+knowledge:Question a owl:Class ;
+    rdfs:subClassOf knowledge:Note ;
+    rdfs:label "Întrebare"@ro , "Question"@en .
+
+knowledge:ResearchQuestion a owl:Class ;
+    rdfs:subClassOf knowledge:Question ;
+    rdfs:label "Întrebare de cercetare"@ro , "Research question"@en .
+
+knowledge:NarrativeNote a owl:Class ;
+    rdfs:subClassOf knowledge:Note ,
+        [ a owl:Restriction ;
+          owl:onProperty knowledge:epistemicOrigin ;
+          owl:hasValue knowledge:InterpretiveOrigin ] ;
+    rdfs:label "Notă narativă (portretizare)"@ro , "Narrative note (portrayal)"@en ;
+    rdfs:comment """Portretizare dintr-un studiu de caz: rezultatul unui act interpretativ care exprimă
+idei din teme (Express). Originea ei epistemică este întotdeauna interpretativă."""@ro ,
+                 """A portrayal in a case study: the result of an interpretive act that expresses
+ideas from themes (Express). Its epistemic origin is always interpretive."""@en .
+
+knowledge:Interpretation a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Act interpretativ"@ro , "Interpretation"@en ;
+    rdfs:comment """Actul prin care autorul exprimă una sau mai multe portretizări pornind de la idei
+(prov:used), înregistrat cu autorul (prov:wasAssociatedWith) și momentul (prov:endedAtTime)."""@ro ,
+                 """The act by which the author expresses one or more portrayals from ideas (prov:used),
+recorded with its author (prov:wasAssociatedWith) and time (prov:endedAtTime)."""@en .
+
+knowledge:Argument a owl:Class ;
+    rdfs:subClassOf knowledge:Note ;
+    rdfs:label "Argument"@ro , "Argument"@en ;
+    rdfs:comment "Structură Toulmin care leagă o afirmație de temeiurile ei (Express)."@ro ,
+                 "A Toulmin structure linking a claim to its grounds (Express)."@en .
+
+[] a owl:AllDisjointClasses ;
+    owl:members ( knowledge:Note knowledge:Study knowledge:Endeavor knowledge:Requirement knowledge:DesignArtifact knowledge:DissertationSection ) .
+
+[] a owl:AllDisjointClasses ;
+    owl:members ( knowledge:Excerpt knowledge:StudyNote knowledge:Claim knowledge:Evidence knowledge:Question knowledge:NarrativeNote knowledge:Argument ) .
+
+#################################################################
+#    3. Module: note links and text
+#################################################################
+
+knowledge:inStudy a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:label "în studiul"@ro , "in study"@en ;
+    rdfs:domain knowledge:Note ;
+    rdfs:range knowledge:Study .
+
+knowledge:groundedIn a owl:ObjectProperty ;
+    rdfs:label "fundamentat în"@ro , "grounded in"@en ;
+    rdfs:comment "O idee sau notă de studiu se sprijină pe note de studiu sau extrase."@ro ,
+                 "An idea or study note rests on study notes or excerpts."@en ;
+    rdfs:domain knowledge:Note ;
+    rdfs:range knowledge:Note .
+
+knowledge:realizes a owl:ObjectProperty ;
+    rdfs:label "realizează"@ro , "realizes"@en ;
+    rdfs:comment "O notă narativă aplică concret o idee dintr-o temă."@ro ,
+                 "A narrative note concretely applies an idea from a theme."@en ;
+    rdfs:domain knowledge:NarrativeNote ;
+    rdfs:range knowledge:Idea .
+
+knowledge:hasPremise a owl:ObjectProperty ;
+    rdfs:label "are premisa"@ro , "has premise"@en ;
+    rdfs:comment "Derivată: afirmația unui argument are ca premise temeiurile acelui argument."@ro ,
+                 "Derived: the claim of an argument has that argument's grounds as premises."@en ;
+    owl:propertyChainAxiom ( [ owl:inverseOf knowledge:hasClaim ] knowledge:hasGrounds ) .
+
+knowledge:isPremiseOf a owl:ObjectProperty ;
+    rdfs:label "este premisă pentru"@ro , "is premise of"@en ;
+    owl:inverseOf knowledge:hasPremise .
+
+knowledge:anchoredIn a owl:ObjectProperty ;
+    rdfs:label "ancorat în"@ro , "anchored in"@en ;
+    rdfs:domain knowledge:Note ;
+    rdfs:range oa:SpecificResource .
+
+knowledge:usedIn a owl:ObjectProperty ;
+    rdfs:label "folosit în"@ro , "used in"@en ;
+    rdfs:domain knowledge:Note ;
+    rdfs:range knowledge:DissertationSection .
+
+knowledge:status a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:label "stare"@ro , "status"@en ;
+    rdfs:comment "Valoare dintr-o schemă de stări potrivită clasei (vezi formele SHACL)."@ro ,
+                 "A value from the status scheme matching the class (see the SHACL shapes)."@en ;
+    rdfs:range skos:Concept .
+
+knowledge:excerptKind a owl:ObjectProperty ;
+    rdfs:label "tip de extras"@ro , "excerpt kind"@en ;
+    rdfs:domain knowledge:Excerpt ;
+    rdfs:range skos:Concept .
+
+knowledge:epistemicOrigin a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:label "origine epistemică"@ro , "epistemic origin"@en ;
+    rdfs:domain knowledge:Note ;
+    rdfs:range skos:Concept .
+
+knowledge:content a owl:ObjectProperty ;
+    rdfs:label "conținut"@ro , "content"@en ;
+    rdfs:comment "Fișier extern cu textul sau modelul (Markdown, PlantUML, PNML)."@ro ,
+                 "External file holding the text or model (Markdown, PlantUML, PNML)."@en .
+
+knowledge:zoteroLink a owl:ObjectProperty ;
+    rdfs:label "legătură Zotero"@ro , "Zotero link"@en .
+
+knowledge:statement a owl:DatatypeProperty ;
+    rdfs:subPropertyOf dcterms:abstract ;
+    rdfs:label "enunț"@ro , "statement"@en ;
+    rdfs:comment "O singură propoziție: ideea centrală a unei note sau formularea unei cerințe."@ro ,
+                 "One sentence: a note's central proposition or a requirement's wording."@en ;
+    rdfs:range rdf:PlainLiteral .
+
+knowledge:body a owl:DatatypeProperty ;
+    rdfs:label "corp"@ro , "body"@en ;
+    rdfs:range rdf:PlainLiteral .
+
+knowledge:quote a owl:DatatypeProperty ;
+    rdfs:label "citat"@ro , "quote"@en ;
+    rdfs:domain knowledge:Excerpt ;
+    rdfs:range xsd:string .
+
+knowledge:zoteroComment a owl:DatatypeProperty ;
+    rdfs:label "comentariu Zotero"@ro , "Zotero comment"@en ;
+    rdfs:domain knowledge:Excerpt ;
+    rdfs:range xsd:string .
+
+knowledge:zoteroAnnotationKey a owl:DatatypeProperty ;
+    rdfs:label "cheie de adnotare Zotero"@ro , "Zotero annotation key"@en ;
+    rdfs:domain knowledge:Excerpt ;
+    rdfs:range xsd:string .
+
+knowledge:pageLabel a owl:DatatypeProperty ;
+    rdfs:label "eticheta paginii"@ro , "page label"@en ;
+    rdfs:domain oa:SpecificResource ;
+    rdfs:range xsd:string .
+
+#################################################################
+#    4. Module: argumentation (Toulmin)
+#################################################################
+
+knowledge:hasComponent a owl:ObjectProperty ;
+    rdfs:label "are componenta"@ro , "has component"@en ;
+    rdfs:comment "Superproprietate a tuturor rolurilor Toulmin jucate de note într-un argument."@ro ,
+                 "Superproperty of every Toulmin role that notes play in an argument."@en ;
+    rdfs:domain knowledge:Argument ;
+    rdfs:range knowledge:Note .
+
+knowledge:hasQualification a owl:ObjectProperty ;
+    rdfs:subPropertyOf knowledge:hasComponent ;
+    rdfs:label "are justificarea calificativului"@ro , "has qualification"@en ;
+    rdfs:comment """O notă care explică de ce afirmația este susținută cu tăria dată de calificativ
+(de ex. «doar trei studii, toate pe ferme mici»). Nu schimbă conținutul afirmației; pentru asta, vezi knowledge:revises."""@ro ,
+                 """A note explaining why the claim is held with the strength given by the qualifier
+(e.g. "only three studies, all on small farms"). It does not change the claim's content; for that, see knowledge:revises."""@en ;
+    rdfs:domain knowledge:Argument ;
+    rdfs:range knowledge:Note .
+
+knowledge:hasClaim a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:subPropertyOf knowledge:hasComponent ;
+    rdfs:label "are afirmația"@ro , "has claim"@en ;
+    rdfs:domain knowledge:Argument ;
+    rdfs:range knowledge:Claim .
+
+knowledge:hasGrounds a owl:ObjectProperty ;
+    rdfs:subPropertyOf knowledge:hasComponent ;
+    rdfs:label "are temeiurile"@ro , "has grounds"@en ;
+    rdfs:domain knowledge:Argument ;
+    rdfs:range knowledge:Note .
+
+knowledge:hasWarrant a owl:ObjectProperty ;
+    rdfs:subPropertyOf knowledge:hasComponent ;
+    rdfs:label "are garanția"@ro , "has warrant"@en ;
+    rdfs:domain knowledge:Argument ;
+    rdfs:range knowledge:Note .
+
+knowledge:hasBacking a owl:ObjectProperty ;
+    rdfs:subPropertyOf knowledge:hasComponent ;
+    rdfs:label "are fundamentul"@ro , "has backing"@en ;
+    rdfs:domain knowledge:Argument ;
+    rdfs:range knowledge:Note .
+
+knowledge:hasRebuttal a owl:ObjectProperty ;
+    rdfs:subPropertyOf knowledge:hasComponent ;
+    rdfs:label "are contraargumentul"@ro , "has rebuttal"@en ;
+    rdfs:domain knowledge:Argument ;
+    rdfs:range knowledge:Note .
+
+knowledge:hasQualifier a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:label "are calificativul"@ro , "has qualifier"@en ;
+    rdfs:comment """Tăria modală a concluziei (Certainly … Possibly), o valoare SKOS, nu o notă.
+Explicația tăriei este o notă legată cu knowledge:hasQualification."""@ro ,
+                 """The modal strength of the conclusion (Certainly … Possibly), a SKOS value, not a note.
+The explanation of that strength is a note linked with knowledge:hasQualification."""@en ;
+    rdfs:domain knowledge:Argument ;
+    rdfs:range skos:Concept .
+
+knowledge:addresses a owl:ObjectProperty ;
+    rdfs:label "abordează"@ro , "addresses"@en ;
+    rdfs:domain knowledge:Argument ;
+    rdfs:range knowledge:ResearchQuestion .
+
+knowledge:presentsArgument a owl:ObjectProperty ;
+    rdfs:label "prezintă argumentul"@ro , "presents argument"@en ;
+    rdfs:comment "O sursă sau o persoană prezintă un argument."@ro ,
+                 "A source or a person presents an argument."@en ;
+    rdfs:range knowledge:Argument .
+
+knowledge:asserts a owl:ObjectProperty ;
+    rdfs:label "afirmă"@ro , "asserts"@en ;
+    rdfs:comment "Derivată: cine prezintă un argument afirmă concluzia lui."@ro ,
+                 "Derived: whoever presents an argument asserts its claim."@en ;
+    owl:propertyChainAxiom ( knowledge:presentsArgument knowledge:hasClaim ) .
+
+knowledge:revises a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasRevisionOf ;
+    rdfs:label "revizuiește"@ro , "revises"@en ;
+    rdfs:comment """Afirmația-subiect este o versiune nouă a afirmației-obiect, cu conținut schimbat
+(de regulă îngustat sau corectat). Afirmația veche rămâne, cu starea Superseded.
+Nu face parte din knowledge:tracesTo: o revizuire este istorie, nu sprijin."""@ro ,
+                 """The subject claim is a new version of the object claim, with changed content
+(typically narrowed or corrected). The old claim remains, with status Superseded.
+Not part of knowledge:tracesTo: a revision is history, not support."""@en ;
+    rdfs:domain knowledge:Claim ;
+    rdfs:range knowledge:Claim .
+
+# Intent to take part in an argument. A note starts plain (no flag); flagging it says it is meant
+# to be used in an argument, and the shapes then check that it is (a warning until it is).
+
+knowledge:isToulminArgumentation a owl:DatatypeProperty , owl:FunctionalProperty ;
+    rdfs:label "este în argumentare Toulmin"@ro , "is Toulmin argumentation"@en ;
+    rdfs:comment """Marchează o notă ca destinată unui argument Toulmin. Absența marcajului înseamnă o notă simplă.
+O notă marcată ar trebui să fie componentă a cel puțin unui argument (formele SHACL avertizează până atunci);
+iar o notă care este componentă a unui argument ar trebui să fie marcată."""@ro ,
+                 """Marks a note as meant for a Toulmin argument. No flag means a plain note.
+A flagged note should be a component of at least one argument (the SHACL shapes warn until it is);
+and a note that is a component of an argument should be flagged."""@en ;
+    rdfs:domain knowledge:Note ;
+    rdfs:range xsd:boolean .
+
+knowledge:intendedToulminRole a owl:ObjectProperty ;
+    rdfs:label "rol Toulmin intenționat"@ro , "intended Toulmin role"@en ;
+    rdfs:comment """Rolul pe care autorul intenționează să-l joace nota într-un argument (o valoare din
+knowledge:ToulminRoleScheme). Nu este funcțional: aceeași notă poate fi temei într-un argument și garanție în altul.
+Formele SHACL avertizează cât timp niciun argument nu o folosește în acel rol; rolul real rămâne cel
+dedus din legăturile argumentului (knowledge:Grounds, knowledge:Warrant, ...), nu acesta."""@ro ,
+                 """The role the author means the note to play in an argument (a value of knowledge:ToulminRoleScheme).
+Not functional: the same note can be grounds in one argument and a warrant in another. The SHACL shapes
+warn while no argument uses it in that role; the actual role stays the one inferred from the argument's
+links (knowledge:Grounds, knowledge:Warrant, ...), not this."""@en ;
+    rdfs:domain knowledge:Note ;
+    rdfs:range skos:Concept .
+
+# Toulmin roles as defined classes: membership is inferred, never asserted.
+
+knowledge:Conclusion a owl:Class ;
+    rdfs:label "Concluzie"@ro , "Conclusion"@en ;
+    rdfs:comment """Rolul de afirmație într-un argument: nota pe care argumentul o stabilește.
+Diferă de knowledge:Claim, care este un tip de notă: o afirmație revizuită (Superseded) rămâne Claim,
+dar nu mai este Conclusion dacă niciun argument nu o mai are drept concluzie."""@ro ,
+                 """The claim role in an argument: the note the argument establishes.
+Differs from knowledge:Claim, which is a note kind: a superseded claim stays a Claim,
+but is no longer a Conclusion once no argument concludes it."""@en ;
+    owl:equivalentClass [ a owl:Restriction ;
+        owl:onProperty [ owl:inverseOf knowledge:hasClaim ] ;
+        owl:someValuesFrom knowledge:Argument ] .
+
+knowledge:Grounds a owl:Class ;
+    rdfs:label "Temeiuri"@ro , "Grounds"@en ;
+    owl:equivalentClass [ a owl:Restriction ;
+        owl:onProperty [ owl:inverseOf knowledge:hasGrounds ] ;
+        owl:someValuesFrom knowledge:Argument ] .
+
+knowledge:Warrant a owl:Class ;
+    rdfs:label "Garanție"@ro , "Warrant"@en ;
+    owl:equivalentClass [ a owl:Restriction ;
+        owl:onProperty [ owl:inverseOf knowledge:hasWarrant ] ;
+        owl:someValuesFrom knowledge:Argument ] .
+
+knowledge:Backing a owl:Class ;
+    rdfs:label "Fundament"@ro , "Backing"@en ;
+    owl:equivalentClass [ a owl:Restriction ;
+        owl:onProperty [ owl:inverseOf knowledge:hasBacking ] ;
+        owl:someValuesFrom knowledge:Argument ] .
+
+knowledge:Rebuttal a owl:Class ;
+    rdfs:label "Contraargument"@ro , "Rebuttal"@en ;
+    owl:equivalentClass [ a owl:Restriction ;
+        owl:onProperty [ owl:inverseOf knowledge:hasRebuttal ] ;
+        owl:someValuesFrom knowledge:Argument ] .
+
+knowledge:Qualification a owl:Class ;
+    rdfs:label "Justificare a calificativului"@ro , "Qualification"@en ;
+    owl:equivalentClass [ a owl:Restriction ;
+        owl:onProperty [ owl:inverseOf knowledge:hasQualification ] ;
+        owl:someValuesFrom knowledge:Argument ] .
+
+knowledge:ArgumentComponent a owl:Class ;
+    rdfs:label "Componentă a argumentului"@ro , "Argument component"@en ;
+    rdfs:comment """Orice notă care joacă un rol într-un argument. Rolurile NU sunt disjuncte:
+aceeași notă poate fi temei într-un argument și garanție în altul."""@ro ,
+                 """Any note playing a role in some argument. Roles are NOT disjoint:
+the same note can be grounds in one argument and warrant in another."""@en ;
+    owl:equivalentClass [ a owl:Restriction ;
+        owl:onProperty [ owl:inverseOf knowledge:hasComponent ] ;
+        owl:someValuesFrom knowledge:Argument ] .
+
+#################################################################
+#    5. Module: reification into engineering artifacts
+#################################################################
+
+knowledge:Requirement a owl:Class ;
+    rdfs:label "Cerință"@ro , "Requirement"@en ;
+    rdfs:comment "Cerință de implementare pentru o aplicație, un serviciu sau un algoritm."@ro ,
+                 "An implementation requirement for an application, service or algorithm."@en .
+
+knowledge:DesignArtifact a owl:Class ;
+    rdfs:label "Artefact de proiectare"@ro , "Design artifact"@en .
+
+knowledge:UMLDiagram a owl:Class ;
+    rdfs:subClassOf knowledge:DesignArtifact ;
+    rdfs:label "Diagramă UML"@ro , "UML diagram"@en .
+
+knowledge:PetriNet a owl:Class ;
+    rdfs:subClassOf knowledge:DesignArtifact ;
+    rdfs:label "Rețea Petri"@ro , "Petri net"@en .
+
+knowledge:AlgorithmSpec a owl:Class ;
+    rdfs:subClassOf knowledge:DesignArtifact ;
+    rdfs:label "Specificație de algoritm"@ro , "Algorithm specification"@en .
+
+[] a owl:AllDisjointClasses ;
+    owl:members ( knowledge:UMLDiagram knowledge:PetriNet knowledge:AlgorithmSpec ) .
+
+knowledge:reifies a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasDerivedFrom ;
+    rdfs:label "reifică"@ro , "reifies"@en ;
+    rdfs:comment """Transformă note (afirmații, argumente) într-o resursă de inginerie care le realizează.
+Nu este reificarea RDF a declarațiilor (rdf:Statement)."""@ro ,
+                 """Turns notes (statements, arguments) into an engineering resource that realizes them.
+Not RDF statement reification (rdf:Statement)."""@en ;
+    rdfs:domain knowledge:Requirement ;
+    rdfs:range knowledge:Note .
+
+knowledge:satisfies a owl:ObjectProperty ;
+    rdfs:label "satisface"@ro , "satisfies"@en ;
+    rdfs:domain knowledge:DesignArtifact ;
+    rdfs:range knowledge:Requirement .
+
+knowledge:implements a owl:ObjectProperty ;
+    rdfs:label "implementează"@ro , "implements"@en ;
+    rdfs:comment "Cod (fișier, modul, commit) care implementează un artefact de proiectare."@ro ,
+                 "Code (file, module, commit) implementing a design artifact."@en ;
+    rdfs:range knowledge:DesignArtifact .
+
+knowledge:requirementKind a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:label "tip de cerință"@ro , "requirement kind"@en ;
+    rdfs:domain knowledge:Requirement ;
+    rdfs:range skos:Concept .
+
+knowledge:diagramType a owl:ObjectProperty , owl:FunctionalProperty ;
+    rdfs:label "tip de diagramă"@ro , "diagram type"@en ;
+    rdfs:domain knowledge:UMLDiagram ;
+    rdfs:range skos:Concept .
+
+#################################################################
+#    6. Module: formal traceability
+#################################################################
+
+knowledge:tracesTo a owl:ObjectProperty , owl:TransitiveProperty ;
+    rdfs:label "trasabil la"@ro , "traces to"@en ;
+    rdfs:comment """Relație tranzitivă de trasabilitate: de la cod și proiectare, prin cerințe și argumente,
+până la extrase și ancore din surse."""@ro ,
+                 """Transitive traceability: from code and design, through requirements and arguments,
+down to excerpts and source anchors."""@en .
+
+knowledge:implements  rdfs:subPropertyOf knowledge:tracesTo .   # code → design
+knowledge:satisfies   rdfs:subPropertyOf knowledge:tracesTo .   # design → requirement
+knowledge:reifies     rdfs:subPropertyOf knowledge:tracesTo .   # requirement → argument or idea
+knowledge:hasGrounds  rdfs:subPropertyOf knowledge:tracesTo .   # argument → grounds
+knowledge:hasWarrant  rdfs:subPropertyOf knowledge:tracesTo .   # argument → warrant
+knowledge:hasBacking  rdfs:subPropertyOf knowledge:tracesTo .   # argument → backing
+knowledge:hasQualification rdfs:subPropertyOf knowledge:tracesTo .   # argument → why that strength
+knowledge:hasPremise  rdfs:subPropertyOf knowledge:tracesTo .   # claim → premise
+knowledge:realizes    rdfs:subPropertyOf knowledge:tracesTo .   # narrative note → idea
+knowledge:groundedIn  rdfs:subPropertyOf knowledge:tracesTo .   # idea → study note → excerpt
+knowledge:anchoredIn  rdfs:subPropertyOf knowledge:tracesTo .   # excerpt → anchor in source
+
+knowledge:expressedFrom a owl:ObjectProperty ;
+    rdfs:label "exprimat din"@ro , "expressed from"@en ;
+    rdfs:comment "Derivată: o portretizare urmează tot ce a folosit actul interpretativ care a generat-o."@ro ,
+                 "Derived: a portrayal traces to everything used by the interpretive act that generated it."@en ;
+    rdfs:subPropertyOf knowledge:tracesTo ;
+    owl:propertyChainAxiom ( prov:wasGeneratedBy prov:used ) .
+
+#################################################################
+#    7. Controlled vocabularies (SKOS)
+#################################################################
+
+# --- Note statuses ---
+knowledge:NoteStatusScheme a skos:ConceptScheme ;
+    skos:prefLabel "Stări ale notelor"@ro , "Note statuses"@en .
+knowledge:Draft a skos:Concept ; skos:inScheme knowledge:NoteStatusScheme ; skos:topConceptOf knowledge:NoteStatusScheme ;
+    skos:prefLabel "Ciornă"@ro , "Draft"@en .
+knowledge:Reviewed a skos:Concept ; skos:inScheme knowledge:NoteStatusScheme ; skos:topConceptOf knowledge:NoteStatusScheme ;
+    skos:prefLabel "Revizuit"@ro , "Reviewed"@en .
+knowledge:Disputed a skos:Concept ; skos:inScheme knowledge:NoteStatusScheme ; skos:topConceptOf knowledge:NoteStatusScheme ;
+    skos:prefLabel "Contestat"@ro , "Disputed"@en .
+knowledge:Superseded a skos:Concept ; skos:inScheme knowledge:NoteStatusScheme ; skos:topConceptOf knowledge:NoteStatusScheme ;
+    skos:prefLabel "Înlocuit"@ro , "Superseded"@en ;
+    skos:definition "Afirmație păstrată ca istorie, revizuită de o afirmație nouă (knowledge:revises)."@ro ,
+                    "A claim kept as history, revised by a newer claim (knowledge:revises)."@en .
+
+# --- Study statuses ---
+knowledge:StudyStatusScheme a skos:ConceptScheme ;
+    skos:prefLabel "Stări ale studiilor"@ro , "Study statuses"@en .
+knowledge:Open a skos:Concept ; skos:inScheme knowledge:StudyStatusScheme ; skos:topConceptOf knowledge:StudyStatusScheme ;
+    skos:prefLabel "Deschis"@ro , "Open"@en ; skos:notation "1" .
+knowledge:Distilled a skos:Concept ; skos:inScheme knowledge:StudyStatusScheme ; skos:topConceptOf knowledge:StudyStatusScheme ;
+    skos:prefLabel "Distilat"@ro , "Distilled"@en ; skos:notation "2" .
+knowledge:Closed a skos:Concept ; skos:inScheme knowledge:StudyStatusScheme ; skos:topConceptOf knowledge:StudyStatusScheme ;
+    skos:prefLabel "Închis"@ro , "Closed"@en ; skos:notation "3" .
+
+# --- Endeavor statuses ---
+knowledge:EndeavorStatusScheme a skos:ConceptScheme ;
+    skos:prefLabel "Stări ale demersurilor"@ro , "Endeavor statuses"@en .
+knowledge:Active a skos:Concept ; skos:inScheme knowledge:EndeavorStatusScheme ; skos:topConceptOf knowledge:EndeavorStatusScheme ;
+    skos:prefLabel "Activ"@ro , "Active"@en .
+knowledge:Completed a skos:Concept ; skos:inScheme knowledge:EndeavorStatusScheme ; skos:topConceptOf knowledge:EndeavorStatusScheme ;
+    skos:prefLabel "Finalizat"@ro , "Completed"@en .
+knowledge:Archived a skos:Concept ; skos:inScheme knowledge:EndeavorStatusScheme ; skos:topConceptOf knowledge:EndeavorStatusScheme ;
+    skos:prefLabel "Arhivat"@ro , "Archived"@en .
+
+# --- Study methods ---
+knowledge:MethodScheme a skos:ConceptScheme ;
+    skos:prefLabel "Metode de studiu"@ro , "Study methods"@en .
+knowledge:LiteratureReview a skos:Concept ; skos:inScheme knowledge:MethodScheme ; skos:topConceptOf knowledge:MethodScheme ;
+    skos:prefLabel "Recenzie de literatură"@ro , "Literature review"@en ;
+    skos:definition "Singura metodă permisă pentru studiile unei teme."@ro ,
+                    "The only method allowed for theme studies."@en .
+knowledge:CaseStudy a skos:Concept ; skos:inScheme knowledge:MethodScheme ; skos:topConceptOf knowledge:MethodScheme ;
+    skos:prefLabel "Studiu de caz"@ro , "Case study"@en .
+knowledge:DesignStudy a skos:Concept ; skos:inScheme knowledge:MethodScheme ; skos:topConceptOf knowledge:MethodScheme ;
+    skos:prefLabel "Studiu de proiectare"@ro , "Design study"@en .
+
+# --- Toulmin qualifiers, ordered by strength ---
+knowledge:QualifierScheme a skos:ConceptScheme ;
+    skos:prefLabel "Calificative"@ro , "Qualifiers"@en .
+knowledge:Certainly a skos:Concept ; skos:inScheme knowledge:QualifierScheme ; skos:topConceptOf knowledge:QualifierScheme ;
+    skos:prefLabel "Cu certitudine"@ro , "Certainly"@en ; skos:notation "1" .
+knowledge:Probably a skos:Concept ; skos:inScheme knowledge:QualifierScheme ; skos:topConceptOf knowledge:QualifierScheme ;
+    skos:prefLabel "Probabil"@ro , "Probably"@en ; skos:notation "2" .
+knowledge:Presumably a skos:Concept ; skos:inScheme knowledge:QualifierScheme ; skos:topConceptOf knowledge:QualifierScheme ;
+    skos:prefLabel "Presupus"@ro , "Presumably"@en ; skos:notation "3" .
+knowledge:Possibly a skos:Concept ; skos:inScheme knowledge:QualifierScheme ; skos:topConceptOf knowledge:QualifierScheme ;
+    skos:prefLabel "Posibil"@ro , "Possibly"@en ; skos:notation "4" .
+
+# --- Toulmin roles a note can be meant to play (see knowledge:intendedToulminRole) ---
+# Named *Role so they do not clash with the defined classes knowledge:Grounds, knowledge:Warrant, ...
+knowledge:ToulminRoleScheme a skos:ConceptScheme ;
+    skos:prefLabel "Roluri Toulmin"@ro , "Toulmin roles"@en .
+knowledge:ConclusionRole a skos:Concept ; skos:inScheme knowledge:ToulminRoleScheme ; skos:topConceptOf knowledge:ToulminRoleScheme ;
+    skos:prefLabel "Concluzie"@ro , "Conclusion"@en ;
+    skos:definition "Afirmația pe care un argument o stabilește (knowledge:hasClaim)."@ro ,
+                    "The claim an argument establishes (knowledge:hasClaim)."@en .
+knowledge:GroundsRole a skos:Concept ; skos:inScheme knowledge:ToulminRoleScheme ; skos:topConceptOf knowledge:ToulminRoleScheme ;
+    skos:prefLabel "Temeiuri"@ro , "Grounds"@en ;
+    skos:definition "Nota pe care se sprijină afirmația (knowledge:hasGrounds)."@ro ,
+                    "The note the claim rests on (knowledge:hasGrounds)."@en .
+knowledge:WarrantRole a skos:Concept ; skos:inScheme knowledge:ToulminRoleScheme ; skos:topConceptOf knowledge:ToulminRoleScheme ;
+    skos:prefLabel "Garanție"@ro , "Warrant"@en ;
+    skos:definition "Nota care leagă temeiurile de afirmație (knowledge:hasWarrant)."@ro ,
+                    "The note linking the grounds to the claim (knowledge:hasWarrant)."@en .
+knowledge:BackingRole a skos:Concept ; skos:inScheme knowledge:ToulminRoleScheme ; skos:topConceptOf knowledge:ToulminRoleScheme ;
+    skos:prefLabel "Fundament"@ro , "Backing"@en ;
+    skos:definition "Nota care susține garanția (knowledge:hasBacking)."@ro ,
+                    "The note supporting the warrant (knowledge:hasBacking)."@en .
+knowledge:RebuttalRole a skos:Concept ; skos:inScheme knowledge:ToulminRoleScheme ; skos:topConceptOf knowledge:ToulminRoleScheme ;
+    skos:prefLabel "Contraargument"@ro , "Rebuttal"@en ;
+    skos:definition "Nota care indică o excepție de la afirmație (knowledge:hasRebuttal)."@ro ,
+                    "The note giving an exception to the claim (knowledge:hasRebuttal)."@en .
+knowledge:QualificationRole a skos:Concept ; skos:inScheme knowledge:ToulminRoleScheme ; skos:topConceptOf knowledge:ToulminRoleScheme ;
+    skos:prefLabel "Justificare a calificativului"@ro , "Qualification"@en ;
+    skos:definition "Nota care explică tăria calificativului (knowledge:hasQualification)."@ro ,
+                    "The note explaining the strength of the qualifier (knowledge:hasQualification)."@en .
+
+# --- Epistemic origin ---
+knowledge:EpistemicOriginScheme a skos:ConceptScheme ;
+    skos:prefLabel "Origini epistemice"@ro , "Epistemic origins"@en .
+knowledge:ExperimentalOrigin a skos:Concept ; skos:inScheme knowledge:EpistemicOriginScheme ; skos:topConceptOf knowledge:EpistemicOriginScheme ;
+    skos:prefLabel "Experimentală"@ro , "Experimental"@en .
+knowledge:InterpretiveOrigin a skos:Concept ; skos:inScheme knowledge:EpistemicOriginScheme ; skos:topConceptOf knowledge:EpistemicOriginScheme ;
+    skos:prefLabel "Interpretativă"@ro , "Interpretive"@en .
+
+[] a owl:AllDifferent ;
+    owl:distinctMembers ( knowledge:ExperimentalOrigin knowledge:InterpretiveOrigin ) .
+
+# --- Excerpt kinds (mapped from Zotero highlight colors) ---
+knowledge:ExcerptKindScheme a skos:ConceptScheme ;
+    skos:prefLabel "Tipuri de extrase"@ro , "Excerpt kinds"@en .
+knowledge:ClaimPassage a skos:Concept ; skos:inScheme knowledge:ExcerptKindScheme ; skos:topConceptOf knowledge:ExcerptKindScheme ;
+    skos:prefLabel "Pasaj: afirmație"@ro , "Claim passage"@en ; skos:notation "yellow" .
+knowledge:MethodPassage a skos:Concept ; skos:inScheme knowledge:ExcerptKindScheme ; skos:topConceptOf knowledge:ExcerptKindScheme ;
+    skos:prefLabel "Pasaj: metodă"@ro , "Method passage"@en ; skos:notation "green" .
+knowledge:EvidencePassage a skos:Concept ; skos:inScheme knowledge:ExcerptKindScheme ; skos:topConceptOf knowledge:ExcerptKindScheme ;
+    skos:prefLabel "Pasaj: dovadă"@ro , "Evidence passage"@en ; skos:notation "blue" .
+knowledge:LimitationPassage a skos:Concept ; skos:inScheme knowledge:ExcerptKindScheme ; skos:topConceptOf knowledge:ExcerptKindScheme ;
+    skos:prefLabel "Pasaj: limitare"@ro , "Limitation passage"@en ; skos:notation "red" .
+knowledge:DefinitionPassage a skos:Concept ; skos:inScheme knowledge:ExcerptKindScheme ; skos:topConceptOf knowledge:ExcerptKindScheme ;
+    skos:prefLabel "Pasaj: definiție"@ro , "Definition passage"@en ; skos:notation "purple" .
+
+# --- Requirement kinds ---
+knowledge:RequirementKindScheme a skos:ConceptScheme ;
+    skos:prefLabel "Tipuri de cerințe"@ro , "Requirement kinds"@en .
+knowledge:Functional a skos:Concept ; skos:inScheme knowledge:RequirementKindScheme ; skos:topConceptOf knowledge:RequirementKindScheme ;
+    skos:prefLabel "Funcțională"@ro , "Functional"@en .
+knowledge:NonFunctional a skos:Concept ; skos:inScheme knowledge:RequirementKindScheme ; skos:topConceptOf knowledge:RequirementKindScheme ;
+    skos:prefLabel "Nefuncțională"@ro , "Non-functional"@en .
+
+# --- UML diagram types ---
+knowledge:DiagramTypeScheme a skos:ConceptScheme ;
+    skos:prefLabel "Tipuri de diagrame UML"@ro , "UML diagram types"@en .
+knowledge:ClassDiagram a skos:Concept ; skos:inScheme knowledge:DiagramTypeScheme ; skos:topConceptOf knowledge:DiagramTypeScheme ;
+    skos:prefLabel "Diagramă de clase"@ro , "Class diagram"@en .
+knowledge:ComponentDiagram a skos:Concept ; skos:inScheme knowledge:DiagramTypeScheme ; skos:topConceptOf knowledge:DiagramTypeScheme ;
+    skos:prefLabel "Diagramă de componente"@ro , "Component diagram"@en .
+knowledge:DeploymentDiagram a skos:Concept ; skos:inScheme knowledge:DiagramTypeScheme ; skos:topConceptOf knowledge:DiagramTypeScheme ;
+    skos:prefLabel "Diagramă de desfășurare"@ro , "Deployment diagram"@en .
+knowledge:SequenceDiagram a skos:Concept ; skos:inScheme knowledge:DiagramTypeScheme ; skos:topConceptOf knowledge:DiagramTypeScheme ;
+    skos:prefLabel "Diagramă de secvență"@ro , "Sequence diagram"@en .
+knowledge:StateDiagram a skos:Concept ; skos:inScheme knowledge:DiagramTypeScheme ; skos:topConceptOf knowledge:DiagramTypeScheme ;
+    skos:prefLabel "Diagramă de stări"@ro , "State machine diagram"@en .
+knowledge:ActivityDiagram a skos:Concept ; skos:inScheme knowledge:DiagramTypeScheme ; skos:topConceptOf knowledge:DiagramTypeScheme ;
+    skos:prefLabel "Diagramă de activitate"@ro , "Activity diagram"@en .
